@@ -1,34 +1,59 @@
 param($Timer)
 
-# Get connection string from app settings
+Write-Host "=== Daily Database Job Started: $(Get-Date) ==="
+
 $connectionString = $env:SqlConnectionString
 
 try {
-    # Create and open connection
+    Write-Host "Attempting to connect to database..."
     $connection = New-Object System.Data.SqlClient.SqlConnection($connectionString)
     $connection.Open()
+    Write-Host "Connection successful. State: $($connection.State)"
 
-    # Define your query
-    $query = "SELECT * FROM NewTable"
+    $query = "SELECT * FROM Orders WHERE CreatedDate = CAST(GETDATE() AS DATE)"
+    Write-Host "Executing query: $query"
 
-    # Create command and execute
     $command = New-Object System.Data.SqlClient.SqlCommand($query, $connection)
     $reader = $command.ExecuteReader()
 
-    # Loop through results
-    while ($reader.Read()) {
-        $orderId = $reader["OrderId"]
-        Write-Host "Processing Order: $orderId"
-    }
+    Write-Host "Query executed. Checking for results..."
 
-    Write-Host "Daily query completed successfully."
+    $rowCount = 0
+
+    if ($reader.HasRows) {
+        Write-Host "Rows found - beginning to read..."
+
+        # Log all available column names
+        $columns = @()
+        for ($i = 0; $i -lt $reader.FieldCount; $i++) {
+            $columns += $reader.GetName($i)
+        }
+        Write-Host "Columns available: $($columns -join ', ')"
+
+        while ($reader.Read()) {
+            $rowCount++
+            Write-Host "--- Row $rowCount ---"
+
+            # Print every column and its value dynamically
+            foreach ($col in $columns) {
+                Write-Host "  $col : $($reader[$col])"
+            }
+        }
+
+        Write-Host "Finished reading. Total rows processed: $rowCount"
+    } else {
+        Write-Host "WARNING: Query returned no rows. Check that data exists for today's date."
+        Write-Host "Today's date (UTC): $(Get-Date -Format 'yyyy-MM-dd')"
+    }
 }
 catch {
     Write-Error "Database error: $_"
+    Write-Error "Stack trace: $($_.ScriptStackTrace)"
 }
 finally {
-    # Always close the connection
     if ($connection.State -eq 'Open') {
         $connection.Close()
+        Write-Host "Connection closed."
     }
+    Write-Host "=== Daily Database Job Finished: $(Get-Date) ==="
 }
