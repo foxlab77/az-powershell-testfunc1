@@ -10,7 +10,7 @@ try {
     $connection.Open()
     Write-Host "Connection successful. State: $($connection.State)"
 
-    $query = "SELECT * FROM Orders WHERE CreatedDate = CAST(GETDATE() AS DATE)"
+    $query = "SELECT * FROM NewTable"
     Write-Host "Executing query: $query"
 
     $command = New-Object System.Data.SqlClient.SqlCommand($query, $connection)
